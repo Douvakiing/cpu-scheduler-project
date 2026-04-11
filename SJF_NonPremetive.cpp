@@ -13,7 +13,6 @@ Process Scheduler::SJF_NonPremetive(){
     for(int i = 0; i < (int)this->processes.size(); i++){
         if(this->processes[i].getRunningState() && this->processes[i].getRemainingTime() != 0){
             this->processes[i].setRemainingTime(this->processes[i].getRemainingTime() - 1);
-            currentTime++;
             return this->processes[i];
         }
         else if(this->processes[i].getRunningState() && this->processes[i].getRemainingTime() == 0){
@@ -32,19 +31,16 @@ Process Scheduler::SJF_NonPremetive(){
         }
         else if(this->processes[idx].getBurstTime() > this->processes[i].getBurstTime()) {
             idx = i;
-        
         }
 
     }
 
-    // Edge case, if all processes are done (won't be needed most likley bs sebo leh la)
+    // Edge case, if all processes are done (won't be needed most likley bs sebo leh)
     if(idx == -1) {
-        currentTime++;
         return Process("IDLE", currentTime, 0);
     }
     
     this->processes[idx].setRunningState(true);
     this->processes[idx].setRemainingTime(this->processes[idx].getRemainingTime() - 1);
-    currentTime++;
     return this->processes[idx];
 }
