@@ -8,6 +8,9 @@
     .\scripts\run-console.ps1 -SkipBuild    # run last build under out\console without recompiling
 
   Optional: set CXX to force a compiler (e.g. g++, clang++, cl).
+
+  On Windows, g++/clang++ (MinGW-style) use -static-libgcc -static-libstdc++ so the .exe
+  runs without MinGW DLLs on PATH (avoids crash 0xC0000139 before any output).
 #>
 param(
   [switch]$SkipBuild
@@ -34,13 +37,21 @@ function Test-CompilerKind {
 }
 
 function Invoke-GnuCompile {
-  param([string]$Compiler, [string]$Out, [string]$Include, [string]$Main, [string[]]$SrcFiles)
-  $compileArgs = @(
-    "-std=c++17", "-O2",
-    "-I", $Include,
-    "-o", $Out,
-    $Main
-  ) + $SrcFiles
+  param(
+    [string]$Compiler,
+    [string]$Out,
+    [string]$Include,
+    [string]$Main,
+    [string[]]$SrcFiles,
+    [switch]$WindowsStaticRuntime
+  )
+  # On Windows, MinGW/Clang binaries otherwise need libstdc++-6.dll / libgcc_s_*.dll on PATH;
+  # without them the process exits with 0xC0000139 (STATUS_ENTRYPOINT_NOT_FOUND) before main.
+  $compileArgs = @("-std=c++17", "-O2")
+  if ($WindowsStaticRuntime) {
+    $compileArgs += @("-static-libgcc", "-static-libstdc++")
+  }
+  $compileArgs += @("-I", $Include, "-o", $Out, $Main) + $SrcFiles
   & $Compiler @compileArgs
 }
 
@@ -98,7 +109,7 @@ if (-not $SkipBuild) {
   if ($kind -eq "msvc") {
     Invoke-MsvcCompile -Out $OutExe -Include $Inc -Main $MainCpp -SrcFiles $SrcCpps
   } else {
-    Invoke-GnuCompile -Compiler $compiler -Out $OutExe -Include $Inc -Main $MainCpp -SrcFiles $SrcCpps
+    Invoke-GnuCompile -Compiler $compiler -Out $OutExe -Include $Inc -Main $MainCpp -SrcFiles $SrcCpps -WindowsStaticRuntime:$IsWin
   }
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
