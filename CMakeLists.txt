@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- Core scheduler sources (shared by console + GUI) ---
-set(SCHEDULER_SOURCES
-  src/Scheduler.cpp
+file(GLOB_RECURSE SCHEDULER_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
 # --- Dependencies (downloaded at configure time) ---

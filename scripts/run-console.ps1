@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
-  Compile main.cpp + src/Scheduler.cpp with a C++ compiler in PATH (no CMake) and run.
-  Include path: src (for Process.h, Scheduler.h).
+  Compile main.cpp + every *.cpp under src/ (recursive) with a C++ compiler in PATH (no CMake) and run.
+  Include path: src (for headers).
 
   Usage:
     .\scripts\run-console.ps1
@@ -17,7 +17,6 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $Inc = Join-Path $Root "src"
 $MainCpp = Join-Path $Root "main.cpp"
-$SchedCpp = Join-Path $Root "src\Scheduler.cpp"
 $OutDir = Join-Path $Root "out\console"
 $IsWin = $env:OS -like "*Windows*"
 
@@ -35,23 +34,25 @@ function Test-CompilerKind {
 }
 
 function Invoke-GnuCompile {
-  param([string]$Compiler, [string]$Out, [string]$Include, [string]$Main, [string]$Sched)
-  & $Compiler @(
+  param([string]$Compiler, [string]$Out, [string]$Include, [string]$Main, [string[]]$SrcFiles)
+  $compileArgs = @(
     "-std=c++17", "-O2",
     "-I", $Include,
     "-o", $Out,
-    $Main, $Sched
-  )
+    $Main
+  ) + $SrcFiles
+  & $Compiler @compileArgs
 }
 
 function Invoke-MsvcCompile {
-  param([string]$Out, [string]$Include, [string]$Main, [string]$Sched)
+  param([string]$Out, [string]$Include, [string]$Main, [string[]]$SrcFiles)
   Push-Location $Root
   try {
     $outDir = Split-Path -Parent $Out
     $fo = Join-Path $outDir ""
     if (-not $fo.EndsWith("\")) { $fo += "\" }
-    & cl /nologo /std:c++17 /EHsc "/Fe$Out" "/Fo$fo" "/I$Include" $Main $Sched
+    $sources = @($Main) + $SrcFiles
+    & cl /nologo /std:c++17 /EHsc "/Fe$Out" "/Fo$fo" "/I$Include" @sources
   } finally {
     Pop-Location
   }
@@ -72,10 +73,16 @@ if (-not (Test-Path -LiteralPath $MainCpp)) {
   Write-Error "Missing $MainCpp"
   exit 1
 }
-if (-not (Test-Path -LiteralPath $SchedCpp)) {
-  Write-Error "Missing $SchedCpp"
+if (-not (Test-Path -LiteralPath $Inc -PathType Container)) {
+  Write-Error "Missing src directory: $Inc"
   exit 1
 }
+
+$SrcCpps = @(
+  Get-ChildItem -LiteralPath $Inc -Recurse -File -Filter "*.cpp" |
+    Sort-Object FullName |
+    ForEach-Object { $_.FullName }
+)
 
 if (-not $SkipBuild) {
   New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
@@ -86,12 +93,12 @@ if (-not $SkipBuild) {
   }
 
   $kind = Test-CompilerKind $compiler
-  Write-Host "Compiling with: $compiler ($kind)"
+  Write-Host "Compiling with: $compiler ($kind) ($($SrcCpps.Count) file(s) under src\)"
 
   if ($kind -eq "msvc") {
-    Invoke-MsvcCompile -Out $OutExe -Include $Inc -Main $MainCpp -Sched $SchedCpp
+    Invoke-MsvcCompile -Out $OutExe -Include $Inc -Main $MainCpp -SrcFiles $SrcCpps
   } else {
-    Invoke-GnuCompile -Compiler $compiler -Out $OutExe -Include $Inc -Main $MainCpp -Sched $SchedCpp
+    Invoke-GnuCompile -Compiler $compiler -Out $OutExe -Include $Inc -Main $MainCpp -SrcFiles $SrcCpps
   }
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
