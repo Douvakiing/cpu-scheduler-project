@@ -8,7 +8,8 @@
 using namespace std;
 
 Process Scheduler::SJF_NonPremetive(){
-    int idx = -1;
+    
+    // Latching onto an already running process, not letting it go until it's done running
     for(int i = 0; i < (int)this->processes.size(); i++){
         if(this->processes[i].getRunningState() && this->processes[i].getRemainingTime() != 0){
             this->processes[i].setRemainingTime(this->processes[i].getRemainingTime() - 1);
@@ -19,7 +20,9 @@ Process Scheduler::SJF_NonPremetive(){
             this->processes[i].setRunningState(false);
         }
     }
-
+    
+    // Picking the next process to run
+    int idx = -1;
     for(int i = 0; i < (int)this->processes.size(); i++){
         if(this->processes[i].getArrivalTime() > currentTime || this->processes[i].getRemainingTime() == 0){
             continue;
@@ -34,6 +37,7 @@ Process Scheduler::SJF_NonPremetive(){
 
     }
 
+    // Edge case, if all processes are done (won't be needed most likley bs sebo leh la)
     if(idx == -1) {
         currentTime++;
         return Process("IDLE", currentTime, 0);
