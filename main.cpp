@@ -12,4 +12,8 @@ int main() {
     scheduler.addProcess(p1);
     scheduler.addProcess(p2);
     scheduler.displayProcesses();
+
+    cout << "Press any key to exit...";
+    cin.get();
+    return 0;
 }
