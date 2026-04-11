@@ -19,14 +19,17 @@ private:
     int turnAroundTime;
     int completionTime;
 
+    bool running;
+
 public:
-    Process(string name, int arrivalTime, int burstTime, int priority=0){
+    Process(string name, int arrivalTime, int burstTime, int priority=0, bool running=false){
         this->pId = idCounter++;
         this->name = name;
         this->arrivalTime = arrivalTime;
         this->burstTime = burstTime;
         this->priority = priority;
         this->remainingTime = burstTime;
+        this->running = running;
     }
     
     int getPid() const{
@@ -68,6 +71,12 @@ public:
     }
     void setCompletionTime(int time){
         this->completionTime = time;
+    }
+    bool getRunningState(){
+        return this->running;
+    }
+    void setRunningState(bool state){
+        this->running = state;
     }
 };
 
