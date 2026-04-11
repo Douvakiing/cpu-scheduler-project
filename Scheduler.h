@@ -19,7 +19,7 @@ public:
 
     void FCFS();
     void SJF_Premetive();
-    void SJF_NonPremetive();
+    Process SJF_NonPremetive();
     void RR(int timeQuantum);
     void Priority_Premetive();
     void Priority_NonPremetive();
