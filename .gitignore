@@ -40,5 +40,13 @@
 # debug information files
 *.dwo
 
-
+# .vscode
 .vscode/
+
+# imgui.ini
+imgui.ini
+
+# CMake
+build/
+out/
+CMakeUserPresets.json
