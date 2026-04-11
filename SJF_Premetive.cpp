@@ -2,35 +2,33 @@
 #include <vector>
 
 #include "Process.h"
+#include "Scheduler.h"
 #include "Scheduler.cpp"
 
 using namespace std;
 
-Process SJF_NonPremetive(){
-    Scheduler scheduler;
-
-    int proccessesNum = 0;
-    string pname;
-    int atime;
-    int btime = 0;
-    int time = 0;
-
-    cout << "How many proccesses do you wish to add? \n";
-    cin >> proccessesNum;
-    
-    for(int i = 0; i < proccessesNum; i++){
-        cout << "Proccess' name: "; cin >> pname;
-        cout << "Arrival time: "; cin >> atime;
-        cout << "Burst time: "; cin >> btime;
-
-        Process newProcess = Process(pname, atime, btime);
-        scheduler.addProcess(newProcess, i);
-    }
-
-    for(int i = 0; i < proccessesNum; i++){
-        if(0){
-            
+Process Scheduler::SJF_NonPremetive(){
+    int idx = -1;
+    for(int i = 0; i < (int)this->processes.size(); i++){
+        if(this->processes[i].getArrivalTime() > currentTime || this->processes[i].getRemainingTime() == 0){
+            continue;
         }
+        else if(idx == -1){
+            idx = i;
+        }
+        else if(this->processes[idx].getBurstTime() > this->processes[i].getBurstTime()) {
+            idx = i;
+        
+        }
+
     }
 
+    if(idx == -1) {
+        currentTime++;
+        return Process("IDLE", currentTime, 0);
+    }
+    
+    this->processes[idx].setRemainingTime(this->processes[idx].getRemainingTime() - 1);
+    currentTime++;
+    return this->processes[idx];
 }

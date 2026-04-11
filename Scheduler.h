@@ -9,6 +9,7 @@ using namespace std;
 class Scheduler {
 private:
     vector<Process> processes;
+    int currentTime = 0;
 public:
     Scheduler();
 
@@ -16,9 +17,6 @@ public:
     void removeProcess(int pid);
     void displayProcesses() const;
     void clearProcesses();
-
-    vector<Process> getProcesses() const;
-    void updateProcess(int pId, const Process& process);
 
     void FCFS();
     void SJF_Premetive();

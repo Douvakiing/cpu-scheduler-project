@@ -26,6 +26,7 @@ public:
         this->arrivalTime = arrivalTime;
         this->burstTime = burstTime;
         this->priority = priority;
+        this->remainingTime = burstTime;
     }
     
     int getPid() const{
