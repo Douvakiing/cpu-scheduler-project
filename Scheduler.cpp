@@ -3,6 +3,18 @@
 Scheduler::Scheduler() {
 }
 
+vector<Process> Scheduler::getProcesses() const {
+    return this->processes;
+}
+
+void Scheduler::updateProcess(int pId, const Process& process) {
+    for (size_t i = 0; i < processes.size(); ++i) {
+        if (processes[i].getPid() == pId) {
+            processes[i] = process;
+        }
+    }
+}
+
 void Scheduler::addProcess(const Process& process, int index) {
     if (index == -1) {
         processes.push_back(process);

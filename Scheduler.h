@@ -17,6 +17,9 @@ public:
     void displayProcesses() const;
     void clearProcesses();
 
+    vector<Process> getProcesses() const;
+    void updateProcess(int pId, const Process& process);
+
     void FCFS();
     void SJF_Premetive();
     Process SJF_NonPremetive();
