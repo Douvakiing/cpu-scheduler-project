@@ -1,6 +1,6 @@
 # CPU Scheduler Simulator
 
-A C++ educational project that simulates classic CPU scheduling algorithms. The core logic lives under `src/`; you can run it from a **console** build or from an interactive **Dear ImGui** desktop app with visualization and controls.
+A C++ educational project that simulates classic CPU scheduling algorithms.  You can run it from a **console** build or from an interactive **GUI** desktop app with visualization and controls.
 
 ## Algorithms
 
@@ -79,39 +79,12 @@ Run the GUI or console binary from the build output directory, or use the script
 Algorithm implementations:
 
 - **Taqi Ahmed** — SJF preemptive
-- **Omar** Wael — SJF non-preemptive
+- **Omar Wael** — SJF non-preemptive
 - **Moahmmed Ehab** — RR
 - **Mohamed Sherif** — Priority non-preemptive
-- **Kareem** Nasser— Priority preemptive
-- **Mina** Emad— FCFS
+- **Kareem Nasser**— Priority preemptive
+- **Mina Emad**— FCFS
 
 GUI and project packaging:
 
 - **Seif Zayed**
-
-## License
-
-This project is released under the [MIT License](LICENSE).
-
-## Third-party software and credits
-
-CMake **FetchContent** vendors source from the following projects into your build tree. Their terms apply to **those libraries**, not to your own `src/` code (except as combined in the built binaries).
-
-### Dear ImGui
-
-**[Dear ImGui](https://github.com/ocornut/imgui)** (“ImGui”) is an immediate-mode GUI library for C++.
-
-- **Copyright:** © 2014–2025 [Omar Cornut](https://github.com/ocornut) and contributors  
-- **License:** [MIT License](https://github.com/ocornut/imgui/blob/master/LICENSE.txt)  
-- **Homepage / docs:** [dearimgui.com](https://www.dearimgui.com/)  
-- **Used in this repo:** Core `imgui` sources plus official **GLFW** and **OpenGL3** backends (version pinned in `CMakeLists.txt`). The default embedded font **ProggyClean** is credited in ImGui’s [fonts documentation](https://github.com/ocornut/imgui/blob/master/docs/FONTS.md) (Tristan Grimmer).
-
-Please retain ImGui’s copyright and license notice if you redistribute ImGui source or substantial portions of it.
-
-### GLFW
-
-**[GLFW](https://www.glfw.org/)** provides windowing and OpenGL/Vulkan contexts.
-
-- **Copyright:** Marcus Geelnard; Camilla Löwy (see [upstream `LICENSE.md](https://github.com/glfw/glfw/blob/master/LICENSE.md)`)  
-- **License:** [zlib/libpng license](https://www.glfw.org/license.html) (permissive)
-
