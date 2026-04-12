@@ -812,6 +812,13 @@ int main(int, char**) {
         float ganttH = drawGanttChart(sim, ganttLegendNames, ImGui::GetWindowDrawList(), canvasPos, availW, rowH, maxUnitW);
         ImGui::Dummy(ImVec2(availW, ganttH));
 
+        if(sim.allDone()){  //calculation
+            ImGui::PushStyleColor(ImGuiCol_Separator, IM_COL32(155, 235, 55, 255)); // R,G,B,A
+            ImGui::SeparatorText("Calculations");
+            ImGui::PopStyleColor();
+            ImGui::Text("Average Waiting Time:");
+            ImGui::Text("Average Turnaround Time:");
+        }
         ImGui::End();
 
         ImGui::Render();
