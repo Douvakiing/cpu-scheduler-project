@@ -2,6 +2,15 @@
 
 Scheduler::Scheduler() : currentTime(0) {}
 
+bool Scheduler::allProcessesFinished() const {
+    for (const Process& p : processes) {
+        if (p.getRemainingTime() > 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void Scheduler::addProcess(const Process& process, int index) {
     if (index == -1) {
         processes.push_back(process);
