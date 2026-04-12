@@ -74,6 +74,14 @@ target_link_libraries(cpu_scheduler_gui PRIVATE imgui)
 
 if(WIN32)
   target_link_libraries(cpu_scheduler_gui PRIVATE opengl32)
+  # Release: no console. Debug / RelWithDebInfo: keep console for logging & the debugger.
+  if(MSVC)
+    target_link_options(cpu_scheduler_gui PRIVATE
+      "$<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:/SUBSYSTEM:WINDOWS;/ENTRY:mainCRTStartup>")
+  elseif(MINGW)
+    target_link_options(cpu_scheduler_gui PRIVATE
+      "$<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:-mwindows>")
+  endif()
 elseif(APPLE)
   target_link_libraries(cpu_scheduler_gui PRIVATE "-framework OpenGL")
 else()
