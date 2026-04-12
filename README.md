@@ -36,11 +36,11 @@ Fetched **automatically** when you run CMake (no separate install):
 From the **repository root** on Windows (PowerShell 5.1+):
 
 
-| Script                                               | What it does                                                                                                                                |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[scripts/build.ps1](scripts/build.ps1)`             | Configures CMake in `build/` and builds (default **Release**).                                                                              |
-| `[scripts/run-gui.ps1](scripts/run-gui.ps1)`         | Builds (unless `-SkipBuild`) and runs `**cpu_scheduler_gui`** (ImGui app).                                                                  |
-| `[scripts/run-console.ps1](scripts/run-console.ps1)` | Compiles `**main.cpp`** + all `src/**/*.cpp` **without CMake** (compiler in `PATH` or `CXX`) into `out/console/` and runs the console demo. |
+| Script | What it does |
+| ------ | ------------ |
+| [scripts/build.ps1](scripts/build.ps1) | Configures CMake in `build/` and builds (default **Release**). |
+| [scripts/run-gui.ps1](scripts/run-gui.ps1) | Builds (unless `-SkipBuild`) and runs **`cpu_scheduler_gui`** (ImGui app). |
+| [scripts/run-console.ps1](scripts/run-console.ps1) | Compiles **`main.cpp`** and all `src/**/*.cpp` **without CMake** (compiler in `PATH` or `CXX`) into `out/console/` and runs the console demo. |
 
 
 Examples:
