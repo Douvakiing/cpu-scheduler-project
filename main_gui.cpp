@@ -467,6 +467,7 @@ int main(int, char**) {
 
     ImGui::StyleColorsDark();
 
+
     int win_w = 0;
     int win_h = 0;
     int fb_w = 0;
@@ -788,6 +789,9 @@ int main(int, char**) {
 
         ImGui::Spacing();
         ImGui::Text("Simulation time: %d", sim.now);
+        ImGui::PushStyleColor(ImGuiCol_Separator, IM_COL32(45, 235, 55, 255)); // R,G,B,A
+        ImGui::SeparatorText("Gantt chart");
+        ImGui::PopStyleColor();
         ImGui::Spacing();
 
         ImVec2 canvasPos = ImGui::GetCursorScreenPos();
