@@ -275,7 +275,7 @@ float drawGanttChart(
     for (int tick = 0; tick <= tEndVis; ++tick) {
         float x = origin.x + leftPad + static_cast<float>(tick) * timeUnitWidth;
         dl->AddLine(ImVec2(x, barTop), ImVec2(x, barBot), IM_COL32(50, 50, 58, 255), 1.f);
-        if (tick < tEndVis) {
+        if (tick <= tEndVis&&hasTimeline) {
             char buf[16];
             std::snprintf(buf, sizeof(buf), "%d", tick);
             dl->AddText(ImVec2(x + 2.f, axisTextY), IM_COL32(180, 180, 190, 255), buf);
