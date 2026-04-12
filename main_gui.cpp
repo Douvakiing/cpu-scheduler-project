@@ -126,13 +126,13 @@ struct GuiSimulation {
         }
     }
 
-    bool step(int rrQuantum) {
+    bool step(int rrQuantum, bool stopWhenDone) {
         if (names.empty()) {
             return false;
         }
-        // if (allDone()) {
-        //     return false;
-        // }
+        if (stopWhenDone && allDone()) {
+            return true;
+        }
 
         const int t = scheduler.getCurrentTime();
         Process r("IDLE", t, 0);
@@ -195,73 +195,134 @@ static ImU32 procColor(int procIndex, int n) {
 }
 
 // --- [4] GANTT DRAWING -------------------------------------------------------
-// Pure ImGui draw-list code: timeline grid, per-process bars, idle strip.
+// Single-track timeline, segment labels centered above each block, color legend.
 
-// Returns pixel height of the drawn chart area (0 if nothing drawn to the draw list).
-float drawGanttChart(const GuiSimulation& sim, ImDrawList* dl, ImVec2 origin, float width, float rowHeight, float maxTimeUnitWidth) {
-    if (sim.names.empty()) {
-        ImGui::TextDisabled("Add processes and run a simulation to see the Gantt chart.");
-        return 0.f;
-    }
-
+// `legendNames` drives legend layout (use sim.names when non-empty; else names from the editable table
+// so reserved height matches what appears after Run/Reset). When there is no timeline yet, the same shell
+// is drawn with an empty bar and a short hint so the panel does not jump in size.
+// Returns pixel height of the drawn chart area (always > 0 for width > 0).
+float drawGanttChart(
+    const GuiSimulation& sim,
+    const std::vector<std::string>& legendNames,
+    ImDrawList* dl,
+    ImVec2 origin,
+    float width,
+    float rowHeight,
+    float maxTimeUnitWidth) {
     int tEnd = 0;
     for (const GanttSeg& s : sim.gantt) {
         tEnd = std::max(tEnd, s.t1);
     }
     tEnd = std::max(tEnd, sim.now);
-    if (tEnd <= 0) {
-        ImGui::TextDisabled("No timeline yet. Press Run.");
-        return 0.f;
-    }
-    const float labelW = 100.f * (kUiScale / 2.f);
-    const float chartAreaW = std::max(1.f, width - labelW);
-    // Fit the full horizon into the panel; cap width per unit when the timeline is short.
+    const bool hasTimeline = tEnd > 0;
+    const int tEndVis = hasTimeline ? tEnd : 1;
+
+    const float leftPad = 12.f * (kUiScale / 2.f);
+    const float chartAreaW = std::max(1.f, width - leftPad);
     const float timeUnitWidth =
-        std::min(maxTimeUnitWidth, chartAreaW / static_cast<float>(tEnd));
+        std::min(maxTimeUnitWidth, chartAreaW / static_cast<float>(tEndVis));
 
-    const int n = static_cast<int>(sim.names.size());
-    const float chartH = rowHeight * static_cast<float>(n) + rowHeight * 0.5f;
+    const int n = static_cast<int>(legendNames.size());
+    const float legendSwatch = 14.f * (kUiScale / 2.f);
+    const float legendLineH = std::max(legendSwatch + 4.f, ImGui::GetTextLineHeight() + 6.f);
+    const float maxLegendX = origin.x + width - 8.f;
 
-    dl->AddRectFilled(origin, ImVec2(origin.x + width, origin.y + chartH + 24.f), IM_COL32(30, 30, 36, 255), 4.f);
-    dl->AddRect(origin, ImVec2(origin.x + width, origin.y + chartH + 24.f), IM_COL32(60, 60, 70, 255), 4.f);
+    struct LegendEntry {
+        float lx = 0.f;
+        float ly = 0.f;
+        const char* text = nullptr;
+        ImU32 col = 0;
+    };
+    std::vector<LegendEntry> legendItems;
+    legendItems.reserve(static_cast<size_t>(n) + 1u);
+    float lx = origin.x + 8.f;
+    float ly = origin.y + 8.f;
+    auto pushLegend = [&](const char* text, ImU32 col) {
+        ImVec2 ts = ImGui::CalcTextSize(text);
+        float itemW = legendSwatch + 8.f + ts.x + 12.f;
+        if (lx + itemW > maxLegendX && lx > origin.x + 8.f) {
+            lx = origin.x + 8.f;
+            ly += legendLineH;
+        }
+        legendItems.push_back({lx, ly, text, col});
+        lx += itemW;
+    };
+    for (int r = 0; r < n; ++r) {
+        pushLegend(legendNames[static_cast<size_t>(r)].c_str(), procColor(r, n));
+    }
+    pushLegend("Idle", procColor(-1, n));
+    const float legendBottom = ly + legendLineH;
 
-    for (int tick = 0; tick <= tEnd; ++tick) {
-        float x = origin.x + labelW + static_cast<float>(tick) * timeUnitWidth;
-        dl->AddLine(ImVec2(x, origin.y), ImVec2(x, origin.y + chartH), IM_COL32(50, 50, 58, 255), 1.f);
-        if (tick < tEnd) {
+    const float labelLift = ImGui::GetTextLineHeight() + 4.f;
+    const float barTop = legendBottom + labelLift + 8.f;
+    const float barH = rowHeight * 1.2f;
+    const float barBot = barTop + barH;
+    const float axisTextY = barBot + 5.f;
+    const float totalH = axisTextY + ImGui::GetTextLineHeight() + 8.f - origin.y;
+
+    dl->AddRectFilled(origin, ImVec2(origin.x + width, origin.y + totalH), IM_COL32(30, 30, 36, 255), 4.f);
+    dl->AddRect(origin, ImVec2(origin.x + width, origin.y + totalH), IM_COL32(60, 60, 70, 255), 4.f);
+
+    for (const LegendEntry& e : legendItems) {
+        dl->AddRectFilled(
+            ImVec2(e.lx, e.ly + 1.f),
+            ImVec2(e.lx + legendSwatch, e.ly + 1.f + legendSwatch),
+            e.col,
+            2.f);
+        dl->AddText(ImVec2(e.lx + legendSwatch + 8.f, e.ly), IM_COL32(220, 220, 230, 255), e.text);
+    }
+
+    for (int tick = 0; tick <= tEndVis; ++tick) {
+        float x = origin.x + leftPad + static_cast<float>(tick) * timeUnitWidth;
+        dl->AddLine(ImVec2(x, barTop), ImVec2(x, barBot), IM_COL32(50, 50, 58, 255), 1.f);
+        if (tick < tEndVis) {
             char buf[16];
             std::snprintf(buf, sizeof(buf), "%d", tick);
-            dl->AddText(ImVec2(x + 2.f, origin.y + chartH + 4.f), IM_COL32(180, 180, 190, 255), buf);
+            dl->AddText(ImVec2(x + 2.f, axisTextY), IM_COL32(180, 180, 190, 255), buf);
         }
     }
 
-    for (int r = 0; r < n; ++r) {
-        float y0 = origin.y + static_cast<float>(r) * rowHeight;
-        float y1 = y0 + rowHeight - 4.f;
-        dl->AddText(ImVec2(origin.x + 6.f, y0 + 4.f), IM_COL32(220, 220, 230, 255), sim.names[r].c_str());
+    const int nSim = static_cast<int>(sim.names.size());
+
+    if (hasTimeline) {
         for (const GanttSeg& s : sim.gantt) {
-            if (s.proc != r) {
-                continue;
+            float x0 = origin.x + leftPad + static_cast<float>(s.t0) * timeUnitWidth;
+            float x1 = origin.x + leftPad + static_cast<float>(s.t1) * timeUnitWidth;
+            ImU32 col = (s.proc < 0) ? procColor(-1, nSim) : procColor(s.proc, nSim);
+            dl->AddRectFilled(ImVec2(x0 + 1.f, barTop + 2.f), ImVec2(x1 - 1.f, barBot - 2.f), col, 2.f);
+
+            const char* segLabel = nullptr;
+            if (s.proc >= 0 && s.proc < nSim) {
+                segLabel = sim.names[static_cast<size_t>(s.proc)].c_str();
+            } else if (s.proc < 0) {
+                segLabel = "Idle";
             }
-            float x0 = origin.x + labelW + static_cast<float>(s.t0) * timeUnitWidth;
-            float x1 = origin.x + labelW + static_cast<float>(s.t1) * timeUnitWidth;
-            ImU32 col = procColor(r, n);
-            dl->AddRectFilled(ImVec2(x0 + 1.f, y0 + 2.f), ImVec2(x1 - 1.f, y1), col, 2.f);
+            if (segLabel != nullptr) {
+                ImVec2 ts = ImGui::CalcTextSize(segLabel);
+                float segW = x1 - x0;
+                float tx = 0.5f * (x0 + x1) - 0.5f * ts.x;
+                float ty = barTop - labelLift;
+                if (ts.x + 4.f <= segW) {
+                    dl->PushClipRect(ImVec2(x0 + 1.f, origin.y + 4.f), ImVec2(x1 - 1.f, barTop + 1.f), true);
+                    dl->AddText(ImVec2(tx, ty), IM_COL32(230, 230, 240, 255), segLabel);
+                    dl->PopClipRect();
+                }
+            }
         }
+    } else {
+        dl->AddRectFilled(
+            ImVec2(origin.x + leftPad + 1.f, barTop + 2.f),
+            ImVec2(origin.x + leftPad + chartAreaW - 1.f, barBot - 2.f),
+            IM_COL32(38, 38, 44, 255),
+            2.f);
+        const char* hint = (n > 0) ? "Press Run to simulate" : "Add processes to see the Gantt chart";
+        ImVec2 hintSz = ImGui::CalcTextSize(hint);
+        float hx = origin.x + leftPad + 0.5f * (chartAreaW - hintSz.x);
+        float hy = barTop + 0.5f * (barH - hintSz.y);
+        dl->AddText(ImVec2(hx, hy), IM_COL32(130, 130, 142, 255), hint);
     }
 
-    float idleY = origin.y + chartH - rowHeight * 0.35f;
-    for (const GanttSeg& s : sim.gantt) {
-        if (s.proc != -1) {
-            continue;
-        }
-        float x0 = origin.x + labelW + static_cast<float>(s.t0) * timeUnitWidth;
-        float x1 = origin.x + labelW + static_cast<float>(s.t1) * timeUnitWidth;
-        dl->AddRectFilled(ImVec2(x0 + 1.f, idleY), ImVec2(x1 - 1.f, idleY + 8.f), procColor(-1, n), 2.f);
-    }
-    dl->AddText(ImVec2(origin.x + 6.f, idleY - 2.f), IM_COL32(160, 160, 170, 255), "idle");
-
-    return chartH + 24.f;
+    return totalH;
 }
 
 } // namespace
@@ -459,6 +520,7 @@ int main(int, char**) {
     bool simRunning = false;
     bool simPaused = false;
     bool simReset = true;
+    bool stopSimWhenAllDone = true;
     double nextStepAt = 0.0;
     int rrQuantum = 2;
     float stepTime = 1.0f;
@@ -489,7 +551,9 @@ int main(int, char**) {
             const double tWall = glfwGetTime();
             if (tWall >= nextStepAt) {
                 nextStepAt = tWall + stepTime;
-                if (!sim.step(rrQuantum)) {
+                if (stopSimWhenAllDone && sim.allDone()) {
+                    simRunning = false;
+                } else if (!sim.step(rrQuantum, stopSimWhenAllDone)) {
                     simRunning = false;
                 }
             }
@@ -510,11 +574,17 @@ int main(int, char**) {
                 | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
                 | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground);
 
-        const bool lockTable = simRunning || simPaused;
+        const bool hasSimulatedBefore = !sim.gantt.empty();
+        // Algorithm + process table disabled; Add process uses modal (arrival = sim time). One rule for all.
+        const bool lockProcessSetup =
+            simRunning
+            || simPaused
+            || hasSimulatedBefore
+            || (stopSimWhenAllDone && sim.allDone() && !sim.names.empty());
 
         // --- [9c] Algorithm & future RR quantum --------------------------------
         ImGui::Text("Algorithm");
-        if (lockTable) {
+        if (lockProcessSetup) {
             ImGui::BeginDisabled();
         }
         ImGui::SetNextItemWidth(280.f);
@@ -527,12 +597,12 @@ int main(int, char**) {
                 rrQuantum = 1;
             }
         }
-        if (lockTable) {
+        if (lockProcessSetup) {
             ImGui::EndDisabled();
         }
 
         ImGui::Text("Processes");
-        if (lockTable) {
+        if (lockProcessSetup) {
             ImGui::BeginDisabled();
         }
 
@@ -595,14 +665,14 @@ int main(int, char**) {
             ImGui::EndTable();
         }
 
-        if (lockTable) {
+        if (lockProcessSetup) {
             ImGui::EndDisabled();
         }
 
         ImGui::Spacing();
 
         if (ImGui::Button("Add process")) {
-            if (simRunning || simPaused) {
+            if (lockProcessSetup) {
                 resumeSimAfterAddDialog = simRunning;
                 if (simRunning) {
                     simRunning = false;
@@ -664,8 +734,18 @@ int main(int, char**) {
             ImGui::EndPopup();
         }
 
+        ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
+
+        const bool canRunSim = canRunAlgo && !sim.names.empty();
+        const bool runDisabled =
+            !canRunSim || simRunning || (stopSimWhenAllDone && sim.allDone());
+        const bool pauseDisabled = !simRunning;
+
+        if (runDisabled) {
+            ImGui::BeginDisabled();
+        }
         if (ImGui::Button("Run") && canRunAlgo) {
             if (!simRunning && !simPaused && simReset) {
                 sim.resetFromTable(table, static_cast<Algorithm>(algoIndex));
@@ -674,12 +754,21 @@ int main(int, char**) {
             simRunning = true;
             simPaused = false;
         }
+        if (runDisabled) {
+            ImGui::EndDisabled();
+        }
         ImGui::SameLine();
+        if (pauseDisabled) {
+            ImGui::BeginDisabled();
+        }
         if (ImGui::Button("Pause")) {
             if (simRunning) {
                 simRunning = false;
                 simPaused = true;
             }
+        }
+        if (pauseDisabled) {
+            ImGui::EndDisabled();
         }
         ImGui::SameLine();
         if (ImGui::Button("Reset")) {
@@ -688,6 +777,8 @@ int main(int, char**) {
             simReset = true;
             sim.resetFromTable(table, static_cast<Algorithm>(algoIndex));
         }
+        ImGui::SameLine();
+        ImGui::Checkbox("Stop when all processes finish", &stopSimWhenAllDone);
 
         ImGui::SetNextItemWidth(220.f);
         ImGui::InputFloat("Step time (s per sim tick)", &stepTime, 0.05f, 0.25f, "%.2f");
@@ -696,19 +787,26 @@ int main(int, char**) {
         }
 
         ImGui::Spacing();
-        if (simRunning || simPaused) {
-            ImGui::Text("Simulation time: %d", sim.now);
-        }
+        ImGui::Text("Simulation time: %d", sim.now);
         ImGui::Spacing();
 
         ImVec2 canvasPos = ImGui::GetCursorScreenPos();
         float availW = ImGui::GetContentRegionAvail().x;
         const float rowH = 32.f * (kUiScale / 2.f);
         const float maxUnitW = 100.f * (kUiScale / 2.f);
-        float ganttH = drawGanttChart(sim, ImGui::GetWindowDrawList(), canvasPos, availW, rowH, maxUnitW);
-        if (ganttH > 0.f) {
-            ImGui::Dummy(ImVec2(availW, ganttH));
+        std::vector<std::string> ganttLegendNames;
+        if (lockProcessSetup) {
+            ganttLegendNames = sim.names;
+        } else {
+            for (const EditableRow& row : table) {
+                if (row.burst <= 0) {
+                    continue;
+                }
+                ganttLegendNames.emplace_back(row.name[0] ? row.name : std::string("P"));
+            }
         }
+        float ganttH = drawGanttChart(sim, ganttLegendNames, ImGui::GetWindowDrawList(), canvasPos, availW, rowH, maxUnitW);
+        ImGui::Dummy(ImVec2(availW, ganttH));
 
         ImGui::End();
 
