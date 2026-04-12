@@ -49,7 +49,26 @@ add_executable(cpu_scheduler main.cpp ${SCHEDULER_SOURCES})
 target_include_directories(cpu_scheduler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # --- GUI executable ---
-add_executable(cpu_scheduler_gui main_gui.cpp ${SCHEDULER_SOURCES})
+set(CPU_SCHEDULER_GUI_SOURCES main_gui.cpp ${SCHEDULER_SOURCES})
+if(WIN32 AND MSVC)
+  # MSVC's IDE build often skips ResourceCompile when only app.ico changes. Compile the .rc ourselves
+  # with an explicit dependency on app.ico so the embedded exe icon always matches the file on disk.
+  set(_app_rc "${CMAKE_CURRENT_SOURCE_DIR}/resources/app.rc")
+  set(_app_ico "${CMAKE_CURRENT_SOURCE_DIR}/resources/app.ico")
+  set(_app_res "${CMAKE_CURRENT_BINARY_DIR}/cpu_scheduler_gui_icon.res")
+  add_custom_command(
+    OUTPUT "${_app_res}"
+    COMMAND "${CMAKE_RC_COMPILER}" /fo "${_app_res}" "${_app_rc}"
+    DEPENDS "${_app_rc}" "${_app_ico}"
+    COMMENT "Compiling icon resources (app.rc + app.ico)"
+    VERBATIM
+  )
+  list(APPEND CPU_SCHEDULER_GUI_SOURCES "${_app_res}")
+  set_source_files_properties("${_app_res}" PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
+elseif(WIN32)
+  list(APPEND CPU_SCHEDULER_GUI_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/resources/app.rc")
+endif()
+add_executable(cpu_scheduler_gui ${CPU_SCHEDULER_GUI_SOURCES})
 target_include_directories(cpu_scheduler_gui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(cpu_scheduler_gui PRIVATE imgui)
 
