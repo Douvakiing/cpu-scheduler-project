@@ -18,7 +18,7 @@ public:
     void displayProcesses() const;
     void clearProcesses();
 
-    void FCFS();
+    Process FCFS();
     void SJF_Premetive();
     Process SJF_NonPremetive();
     void RR(int timeQuantum);
