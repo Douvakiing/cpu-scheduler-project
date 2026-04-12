@@ -1,11 +1,27 @@
+// =============================================================================
+// main_gui.cpp — ImGui + GLFW OpenGL3 front-end for the CPU scheduler demo
+//
+// File map (search for these banners to jump):
+//   [1] INCLUDES & PLATFORM
+//   [2] GLFW ERROR CALLBACK
+//   [3] DOMAIN TYPES & SIMULATION (anonymous namespace)
+//   [4] GANTT DRAWING
+//   [5] WINDOWS WINDOW ICON
+//   [6] MAIN — GLFW / OpenGL WINDOW
+//   [7] MAIN — IMGUI SETUP & FONTS
+//   [8] MAIN — APP STATE & DEFAULT DATA
+//   [9] MAIN — PER-FRAME LOOP (9a sim clock … 9f OpenGL present)
+//   [10] SHUTDOWN
+// =============================================================================
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "Scheduler.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
-#include <deque>
 #include <string>
 #include <vector>
 
@@ -28,11 +44,19 @@
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
+// --- [1] INCLUDES & PLATFORM -------------------------------------------------
+// Standard library, ImGui, GLFW, and Windows/OpenGL quirks (NOMINMAX, etc.)
+// are grouped above. Nothing here runs until main().
+
+// --- [2] GLFW ERROR CALLBACK -------------------------------------------------
 static void glfw_error_callback(int error, const char* description) {
     std::fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
 static constexpr float kUiScale = 1.5f;
+
+// --- [3] DOMAIN TYPES & SIMULATION -------------------------------------------
+// Editable table rows + Gantt state; each step delegates to `Scheduler`.
 
 namespace {
 
@@ -43,7 +67,6 @@ enum class Algorithm : int {
     RoundRobin,
     Priority_Preemptive,
     Priority_NonPreemptive,
-    COUNT
 };
 
 static const char* kAlgorithmLabels[] = {
@@ -54,12 +77,6 @@ static const char* kAlgorithmLabels[] = {
     "Priority (preemptive)",
     "Priority (non-preemptive)",
 };
-
-static_assert(sizeof(kAlgorithmLabels) / sizeof(kAlgorithmLabels[0]) == static_cast<size_t>(Algorithm::COUNT), "");
-
-bool algorithmImplemented(Algorithm a) {
-    return a == Algorithm::FCFS;
-}
 
 struct EditableRow {
     char name[32]{};
@@ -74,18 +91,12 @@ struct GanttSeg {
     int proc = -1;
 };
 
-struct Simulation {
+struct GuiSimulation {
+    Scheduler scheduler;
     std::vector<std::string> names;
-    std::vector<int> arrival;
-    std::vector<int> remaining;
-    std::vector<bool> seenArrived;
-    std::deque<int> ready;
-    int running = -1;
-    int now = 0;
     std::vector<GanttSeg> gantt;
     Algorithm algo = Algorithm::FCFS;
-
-    void clearGantt() { gantt.clear(); }
+    int now = 0;
 
     void appendGanttUnit(int t, int pid) {
         if (!gantt.empty() && gantt.back().proc == pid && gantt.back().t1 == t) {
@@ -95,90 +106,81 @@ struct Simulation {
         }
     }
 
-    bool allDone() const {
-        for (int r : remaining) {
-            if (r > 0) {
-                return false;
-            }
-        }
-        return true;
-    }
+    bool allDone() const { return scheduler.allProcessesFinished(); }
 
     void resetFromTable(const std::vector<EditableRow>& rows, Algorithm alg) {
+        scheduler.clearProcesses();
         names.clear();
-        arrival.clear();
-        remaining.clear();
-        ready.clear();
-        running = -1;
-        now = 0;
         gantt.clear();
         algo = alg;
+        scheduler.setCurrentTime(0);
+        now = 0;
         for (const EditableRow& row : rows) {
             if (row.burst <= 0) {
                 continue;
             }
-            names.push_back(row.name[0] ? row.name : "P");
-            arrival.push_back(std::max(0, row.arrival));
-            remaining.push_back(row.burst);
+            const std::string displayName = row.name[0] ? row.name : "P";
+            names.push_back(displayName);
+            Process p(displayName, std::max(0, row.arrival), row.burst, row.priority, false);
+            scheduler.addProcess(p);
         }
-        seenArrived.assign(names.size(), false);
     }
 
-    bool stepFCFS() {
+    bool step(int rrQuantum) {
         if (names.empty()) {
             return false;
         }
-        if (allDone()) {
-            return false;
-        }
+        // if (allDone()) {
+        //     return false;
+        // }
 
-        const int n = static_cast<int>(names.size());
-
-        for (int i = 0; i < n; ++i) {
-            if (remaining[i] <= 0 || seenArrived[i]) {
-                continue;
-            }
-            if (arrival[i] <= now) {
-                ready.push_back(i);
-                seenArrived[i] = true;
-            }
-        }
-
-        if (running < 0 && !ready.empty()) {
-            running = ready.front();
-            ready.pop_front();
-        }
-
-        if (running >= 0) {
-            appendGanttUnit(now, running);
-            remaining[running]--;
-            if (remaining[running] <= 0) {
-                running = -1;
-            }
-        } else {
-            bool pending = false;
-            for (int i = 0; i < n; ++i) {
-                if (remaining[i] > 0) {
-                    pending = true;
-                    break;
-                }
-            }
-            if (pending) {
-                appendGanttUnit(now, -1);
-            }
-        }
-
-        now++;
-        return true;
-    }
-
-    bool step() {
+        const int t = scheduler.getCurrentTime();
+        Process r("IDLE", t, 0);
         switch (algo) {
         case Algorithm::FCFS:
-            return stepFCFS();
+            r = scheduler.FCFS();
+            break;
+        case Algorithm::SJF_Preemptive:
+            r = scheduler.SJF_Premetive();
+            break;
+        case Algorithm::SJF_NonPreemptive:
+            r = scheduler.SJF_NonPremetive();
+            break;
+        case Algorithm::RoundRobin:
+            r = scheduler.RR(rrQuantum);
+            break;
+        case Algorithm::Priority_Preemptive:
+            r = scheduler.Priority_Premetive();
+            break;
+        case Algorithm::Priority_NonPreemptive:
+            r = scheduler.Priority_NonPremetive();
+            break;
         default:
             return false;
         }
+
+        int procIdx = -1;
+        if (r.getName() != "IDLE") {
+            const std::vector<Process>& procs = scheduler.getProcesses();
+            for (size_t i = 0; i < procs.size(); ++i) {
+                if (procs[i].getPid() == r.getPid()) {
+                    procIdx = static_cast<int>(i);
+                    break;
+                }
+            }
+        }
+
+        appendGanttUnit(t, procIdx);
+        scheduler.advanceTime();
+        now = scheduler.getCurrentTime();
+        return true;
+    }
+
+    void addProcessAtCurrentTime(const std::string& displayName, int burst, int priority) {
+        const int arrival = scheduler.getCurrentTime();
+        names.push_back(displayName);
+        Process p(displayName, arrival, std::max(1, burst), priority, false);
+        scheduler.addProcess(p);
     }
 };
 
@@ -192,10 +194,14 @@ static ImU32 procColor(int procIndex, int n) {
     return ImGui::ColorConvertFloat4ToU32(c);
 }
 
-void drawGanttChart(const Simulation& sim, ImDrawList* dl, ImVec2 origin, float width, float rowHeight, float timeUnitWidth) {
+// --- [4] GANTT DRAWING -------------------------------------------------------
+// Pure ImGui draw-list code: timeline grid, per-process bars, idle strip.
+
+// Returns pixel height of the drawn chart area (0 if nothing drawn to the draw list).
+float drawGanttChart(const GuiSimulation& sim, ImDrawList* dl, ImVec2 origin, float width, float rowHeight, float maxTimeUnitWidth) {
     if (sim.names.empty()) {
         ImGui::TextDisabled("Add processes and run a simulation to see the Gantt chart.");
-        return;
+        return 0.f;
     }
 
     int tEnd = 0;
@@ -205,10 +211,17 @@ void drawGanttChart(const Simulation& sim, ImDrawList* dl, ImVec2 origin, float 
     tEnd = std::max(tEnd, sim.now);
     if (tEnd <= 0) {
         ImGui::TextDisabled("No timeline yet. Press Run.");
-        return;
+        return 0.f;
     }
 
+    ImGui::Text("Simulation time: %d", sim.now);
+
     const float labelW = 100.f * (kUiScale / 2.f);
+    const float chartAreaW = std::max(1.f, width - labelW);
+    // Fit the full horizon into the panel; cap width per unit when the timeline is short.
+    const float timeUnitWidth =
+        std::min(maxTimeUnitWidth, chartAreaW / static_cast<float>(tEnd));
+
     const int n = static_cast<int>(sim.names.size());
     const float chartH = rowHeight * static_cast<float>(n) + rowHeight * 0.5f;
 
@@ -250,10 +263,13 @@ void drawGanttChart(const Simulation& sim, ImDrawList* dl, ImVec2 origin, float 
         dl->AddRectFilled(ImVec2(x0 + 1.f, idleY), ImVec2(x1 - 1.f, idleY + 8.f), procColor(-1, n), 2.f);
     }
     dl->AddText(ImVec2(origin.x + 6.f, idleY - 2.f), IM_COL32(160, 160, 170, 255), "idle");
+
+    return chartH + 24.f;
 }
 
 } // namespace
 
+// --- [5] WINDOWS WINDOW ICON -----------------------------------------------
 #if defined(_WIN32)
 // Must match resources/app.rc (IDI_MAINICON = 1; Explorer uses this as the file icon).
 static constexpr UINT kAppIconResourceId = 1;
@@ -345,6 +361,7 @@ static void apply_window_icon_from_exe_resource(GLFWwindow* window) {
 static void apply_window_icon_from_exe_resource(GLFWwindow*) {}
 #endif
 
+// --- [6] MAIN — GLFW / OPENGL WINDOW -----------------------------------------
 int main(int, char**) {
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) {
@@ -382,10 +399,12 @@ int main(int, char**) {
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
+    // --- [7] MAIN — IMGUI SETUP & FONTS --------------------------------------
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
+    io.IniFilename = nullptr;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     ImGui::StyleColorsDark();
@@ -419,6 +438,8 @@ int main(int, char**) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    // --- [8] MAIN — APP STATE & DEFAULT DATA ---------------------------------
+    // `table` is what the user edits; `sim` is built from it on Run/Reset.
     std::vector<EditableRow> table;
     table.push_back({});
     std::strncpy(table[0].name, "P1", sizeof(table[0].name) - 1);
@@ -436,14 +457,26 @@ int main(int, char**) {
     table[2].burst = 2;
     table[2].priority = 0;
 
-    Simulation sim;
+    GuiSimulation sim;
     int algoIndex = static_cast<int>(Algorithm::FCFS);
     bool simRunning = false;
+    bool simPaused = false;
+    bool simReset = true;
     double nextStepAt = 0.0;
     int rrQuantum = 2;
+    float stepTime = 1.0f;
 
+    // Mid-simulation "add process" modal
+    bool resumeSimAfterAddDialog = false;
+    char addProcNameBuf[32]{};
+    int addProcBurst = 1;
+    int addProcPriority = 0;
+    
     ImVec4 clear_color = ImVec4(0.12f, 0.12f, 0.14f, 1.00f);
+    
+    sim.resetFromTable(table, static_cast<Algorithm>(algoIndex));
 
+    // --- [9] MAIN — PER-FRAME LOOP -------------------------------------------
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
@@ -452,13 +485,14 @@ int main(int, char**) {
         }
 
         const Algorithm algo = static_cast<Algorithm>(algoIndex);
-        const bool canRunAlgo = algorithmImplemented(algo);
+        const bool canRunAlgo = algoIndex >= 0 && algoIndex < IM_ARRAYSIZE(kAlgorithmLabels);
 
+        // --- [9a] Simulation clock (wall time → discrete sim steps) ------------
         if (simRunning && canRunAlgo) {
             const double tWall = glfwGetTime();
             if (tWall >= nextStepAt) {
-                nextStepAt = tWall + 1.0;
-                if (!sim.step() || sim.allDone()) {
+                nextStepAt = tWall + stepTime;
+                if (!sim.step(rrQuantum)) {
                     simRunning = false;
                 }
             }
@@ -468,6 +502,7 @@ int main(int, char**) {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        // --- [9b] Full-viewport main window shell ------------------------------
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
@@ -478,81 +513,83 @@ int main(int, char**) {
                 | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
                 | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground);
 
-        ImGui::Text("CPU Scheduler");
-        ImGui::Separator();
+        const bool lockTable = simRunning || simPaused;
 
+        // --- [9c] Algorithm & future RR quantum --------------------------------
         ImGui::Text("Algorithm");
+        if (lockTable) {
+            ImGui::BeginDisabled();
+        }
         ImGui::SetNextItemWidth(280.f);
-        ImGui::Combo("##algo", &algoIndex, kAlgorithmLabels, static_cast<int>(Algorithm::COUNT));
-        if (!canRunAlgo) {
-            ImGui::SameLine();
-            ImGui::TextDisabled("(simulation not wired yet)");
-        }
-        ImGui::InputInt("RR quantum (for later)", &rrQuantum);
-        if (rrQuantum < 1) {
-            rrQuantum = 1;
-        }
+        ImGui::Combo("##algo", &algoIndex, kAlgorithmLabels, IM_ARRAYSIZE(kAlgorithmLabels));
 
-        ImGui::Spacing();
-        if (ImGui::Button("Run") && canRunAlgo && !table.empty()) {
-            bool anyBurst = false;
-            for (const auto& row : table) {
-                if (row.burst > 0) {
-                    anyBurst = true;
-                    break;
-                }
-            }
-            if (anyBurst) {
-                sim.resetFromTable(table, algo);
-                simRunning = true;
-                nextStepAt = 0.0;
+        if (algoIndex == static_cast<int>(Algorithm::RoundRobin)) {
+            ImGui::SetNextItemWidth(280.f);
+            ImGui::InputInt("RR quantum", &rrQuantum);
+            if (rrQuantum < 1) {
+                rrQuantum = 1;
             }
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Pause")) {
-            simRunning = false;
+        if (lockTable) {
+            ImGui::EndDisabled();
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Reset")) {
-            simRunning = false;
-            sim.resetFromTable(table, static_cast<Algorithm>(algoIndex));
-        }
-
-        ImGui::SameLine();
-        ImGui::Text("  sim t = %d", sim.now);
-        ImGui::Separator();
 
         ImGui::Text("Processes");
-        const bool lockTable = simRunning;
         if (lockTable) {
             ImGui::BeginDisabled();
         }
 
-        if (ImGui::BeginTable("procs", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 28.f);
-            ImGui::TableSetupColumn("Name");
-            ImGui::TableSetupColumn("Arrival", ImGuiTableColumnFlags_WidthFixed, 90.f);
-            ImGui::TableSetupColumn("Burst", ImGuiTableColumnFlags_WidthFixed, 80.f);
-            ImGui::TableSetupColumn("Priority", ImGuiTableColumnFlags_WidthFixed, 90.f);
-            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 80.f);
+        const bool showPriority =
+            (algoIndex == static_cast<int>(Algorithm::Priority_Preemptive)
+             || algoIndex == static_cast<int>(Algorithm::Priority_NonPreemptive));
+        const int procTableCols = showPriority ? 6 : 5;
+
+        // Widths are proportional to the main window content width (weights are relative, not absolute px).
+        if (ImGui::BeginTable(
+                "procs",
+                procTableCols,
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthStretch, 0.06f);
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, showPriority ? 0.28f : 0.34f);
+            ImGui::TableSetupColumn("Arrival", ImGuiTableColumnFlags_WidthStretch, 0.14f);
+            ImGui::TableSetupColumn("Burst", ImGuiTableColumnFlags_WidthStretch, 0.14f);
+            if (showPriority) {
+                ImGui::TableSetupColumn("Priority", ImGuiTableColumnFlags_WidthStretch, 0.14f);
+            }
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch, 0.05f);
             ImGui::TableHeadersRow();
 
             for (int i = 0; i < static_cast<int>(table.size()); ++i) {
                 ImGui::TableNextRow();
                 ImGui::PushID(i);
-                ImGui::TableSetColumnIndex(0);
+                int c = 0;
+                ImGui::TableSetColumnIndex(c++);
                 ImGui::Text("%d", i + 1);
-                ImGui::TableSetColumnIndex(1);
+                ImGui::TableSetColumnIndex(c++);
                 ImGui::SetNextItemWidth(-FLT_MIN);
                 ImGui::InputText("##name", table[i].name, IM_ARRAYSIZE(table[i].name));
-                ImGui::TableSetColumnIndex(2);
+                ImGui::TableSetColumnIndex(c++);
                 ImGui::InputInt("##arrival", &table[i].arrival);
-                ImGui::TableSetColumnIndex(3);
+                ImGui::TableSetColumnIndex(c++);
                 ImGui::InputInt("##burst", &table[i].burst);
-                ImGui::TableSetColumnIndex(4);
-                ImGui::InputInt("##prio", &table[i].priority);
-                ImGui::TableSetColumnIndex(5);
+                if (showPriority) {
+                    ImGui::TableSetColumnIndex(c++);
+                    ImGui::InputInt("##prio", &table[i].priority);
+                }
+                ImGui::TableSetColumnIndex(c++);
+
+                if (table[i].arrival < 0) {
+                    table[i].arrival = 0;
+                }
+                if (table[i].burst < 1) {
+                    table[i].burst = 1;
+                }
+                if (showPriority && table[i].priority < 0) {
+                    table[i].priority = 0;
+                }
+
                 if (ImGui::SmallButton("Remove")) {
+        
                     table.erase(table.begin() + i);
                     i--;
                 }
@@ -561,29 +598,121 @@ int main(int, char**) {
             ImGui::EndTable();
         }
 
-        if (ImGui::Button("Add process")) {
-            EditableRow row{};
-            std::snprintf(row.name, sizeof(row.name), "P%d", static_cast<int>(table.size()) + 1);
-            row.burst = 1;
-            table.push_back(row);
-        }
-
         if (lockTable) {
             ImGui::EndDisabled();
         }
 
         ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Text("Gantt chart (one wall-clock second per simulation time unit)");
-        ImVec2 canvasPos = ImGui::GetCursorScreenPos();
-        float availW = ImGui::GetContentRegionAvail().x;
-        float unitW = std::clamp(availW / 24.f, 18.f, 56.f);
-        const float rowH = 32.f * (kUiScale / 2.f);
-        drawGanttChart(sim, ImGui::GetWindowDrawList(), canvasPos, availW, rowH, unitW);
-        ImGui::Dummy(ImVec2(availW, rowH * (std::max(3, static_cast<int>(sim.names.size())) + 2.f)));
+
+        if (ImGui::Button("Add process")) {
+            if (simRunning || simPaused) {
+                resumeSimAfterAddDialog = simRunning;
+                if (simRunning) {
+                    simRunning = false;
+                    simPaused = true;
+                }
+                std::memset(addProcNameBuf, 0, sizeof(addProcNameBuf));
+                std::snprintf(addProcNameBuf, sizeof(addProcNameBuf), "P%d", static_cast<int>(table.size()) + 1);
+                addProcBurst = 1;
+                addProcPriority = 0;
+                ImGui::OpenPopup("AddProcessDuringSim");
+            } else {
+                EditableRow row{};
+                std::snprintf(row.name, sizeof(row.name), "P%d", static_cast<int>(table.size()) + 1);
+                row.burst = 1;
+                table.push_back(row);
+            }
+        }
+
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        if (ImGui::BeginPopupModal("AddProcessDuringSim", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Arrival time is the current simulation time (not editable).");
+            ImGui::Text("Current time: %d", sim.scheduler.getCurrentTime());
+            ImGui::Spacing();
+            ImGui::SetNextItemWidth(280.f);
+            ImGui::InputText("Name", addProcNameBuf, IM_ARRAYSIZE(addProcNameBuf));
+            ImGui::SetNextItemWidth(280.f);
+            ImGui::InputInt("Burst", &addProcBurst);
+            if (showPriority) {
+                ImGui::SetNextItemWidth(280.f);
+                ImGui::InputInt("Priority", &addProcPriority);
+            }
+            if (addProcBurst < 1) {
+                addProcBurst = 1;
+            }
+            if (showPriority && addProcPriority < 0) {
+                addProcPriority = 0;
+            }
+            ImGui::Separator();
+            if (ImGui::Button("Add", ImVec2(120.f, 0.f))) {
+                EditableRow row{};
+                std::strncpy(row.name, addProcNameBuf, sizeof(row.name) - 1);
+                row.name[sizeof(row.name) - 1] = '\0';
+                row.arrival = sim.scheduler.getCurrentTime();
+                row.burst = addProcBurst;
+                row.priority = showPriority ? addProcPriority : 0;
+                table.push_back(row);
+                const std::string displayName = row.name[0] ? row.name : "P";
+                sim.addProcessAtCurrentTime(displayName, row.burst, row.priority);
+                ImGui::CloseCurrentPopup();
+                simRunning = resumeSimAfterAddDialog;
+                simPaused = false;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", ImVec2(120.f, 0.f))) {
+                ImGui::CloseCurrentPopup();
+                simRunning = resumeSimAfterAddDialog;
+                simPaused = false;
+            }
+            ImGui::EndPopup();
+        }
 
         ImGui::Separator();
-        ImGui::Text("%.1f FPS", io.Framerate);
+        ImGui::Spacing();
+        if (ImGui::Button("Run") && canRunAlgo) {
+            if (!simRunning && !simPaused && simReset) {
+                sim.resetFromTable(table, static_cast<Algorithm>(algoIndex));
+                simReset = false;
+            }
+            simRunning = true;
+            simPaused = false;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Pause")) {
+            if (simRunning) {
+                simRunning = false;
+                simPaused = true;
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Reset")) {
+            simRunning = false;
+            simPaused = false;
+            simReset = true;
+            sim.resetFromTable(table, static_cast<Algorithm>(algoIndex));
+        }
+
+        ImGui::SetNextItemWidth(220.f);
+        ImGui::InputFloat("Step time (s per sim tick)", &stepTime, 0.05f, 0.25f, "%.2f");
+        if (stepTime < 0.01f) {
+            stepTime = 0.01f;
+        }
+
+        ImGui::Spacing();
+        if (simRunning || simPaused) {
+            ImGui::Text("Simulation time: %d", sim.now);
+        }
+        ImGui::Spacing();
+
+        ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+        float availW = ImGui::GetContentRegionAvail().x;
+        const float rowH = 32.f * (kUiScale / 2.f);
+        const float maxUnitW = 100.f * (kUiScale / 2.f);
+        float ganttH = drawGanttChart(sim, ImGui::GetWindowDrawList(), canvasPos, availW, rowH, maxUnitW);
+        if (ganttH > 0.f) {
+            ImGui::Dummy(ImVec2(availW, ganttH));
+        }
+
         ImGui::End();
 
         ImGui::Render();
@@ -602,6 +731,7 @@ int main(int, char**) {
         glfwSwapBuffers(window);
     }
 
+    // --- [10] SHUTDOWN --------------------------------------------------------
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
