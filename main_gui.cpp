@@ -213,9 +213,6 @@ float drawGanttChart(const GuiSimulation& sim, ImDrawList* dl, ImVec2 origin, fl
         ImGui::TextDisabled("No timeline yet. Press Run.");
         return 0.f;
     }
-
-    ImGui::Text("Simulation time: %d", sim.now);
-
     const float labelW = 100.f * (kUiScale / 2.f);
     const float chartAreaW = std::max(1.f, width - labelW);
     // Fit the full horizon into the panel; cap width per unit when the timeline is short.
