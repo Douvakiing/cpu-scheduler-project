@@ -1,6 +1,7 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
+#include <deque>
 #include <iostream>
 #include <vector>
 #include "Process.h"
@@ -10,6 +11,13 @@ class Scheduler {
 private:
     vector<Process> processes;
     int currentTime = 0;
+
+    deque<int> rr_ready;
+    int rr_running = -1;
+    int rr_time_left_in_quantum = 0;
+
+    void resetRoundRobinState();
+
 public:
     Scheduler();
 
@@ -27,7 +35,6 @@ public:
 
     bool allProcessesFinished() const;
 
-    // One simulation time unit each; caller should advanceTime() after each call.
     Process FCFS();
     Process SJF_Premetive();
     Process SJF_NonPremetive();

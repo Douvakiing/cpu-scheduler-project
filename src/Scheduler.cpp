@@ -2,6 +2,12 @@
 
 Scheduler::Scheduler() : currentTime(0) {}
 
+void Scheduler::resetRoundRobinState() {
+    rr_ready.clear();
+    rr_running = -1;
+    rr_time_left_in_quantum = 0;
+}
+
 bool Scheduler::allProcessesFinished() const {
     for (const Process& p : processes) {
         if (p.getRemainingTime() > 0) {
@@ -41,4 +47,5 @@ void Scheduler::displayProcesses() const {
 
 void Scheduler::clearProcesses() {
     processes.clear();
+    resetRoundRobinState();
 }
