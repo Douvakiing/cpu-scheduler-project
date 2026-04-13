@@ -290,7 +290,7 @@ float drawGanttChart(
             float x1 = origin.x + leftPad + static_cast<float>(s.t1) * timeUnitWidth;
             ImU32 col = (s.proc < 0) ? procColor(-1, nSim) : procColor(s.proc, nSim);
             dl->AddRectFilled(ImVec2(x0 + 1.f, barTop + 2.f), ImVec2(x1 - 1.f, barBot - 2.f), col, 2.f);
-
+            
             const char* segLabel = nullptr;
             if (s.proc >= 0 && s.proc < nSim) {
                 segLabel = sim.names[static_cast<size_t>(s.proc)].c_str();
@@ -812,10 +812,10 @@ int main(int, char**) {
         float ganttH = drawGanttChart(sim, ganttLegendNames, ImGui::GetWindowDrawList(), canvasPos, availW, rowH, maxUnitW);
         ImGui::Dummy(ImVec2(availW, ganttH));
 
+        ImGui::PushStyleColor(ImGuiCol_Separator, IM_COL32(155, 235, 55, 255)); // R,G,B,A
+        ImGui::SeparatorText("Process Scheduling Metrics");
+        ImGui::PopStyleColor();
         if(sim.allDone()){  //calculation
-            ImGui::PushStyleColor(ImGuiCol_Separator, IM_COL32(155, 235, 55, 255)); // R,G,B,A
-            ImGui::SeparatorText("Calculations");
-            ImGui::PopStyleColor();
             ImGui::Text("Average Waiting Time:");
             ImGui::Text("Average Turnaround Time:");
         }
