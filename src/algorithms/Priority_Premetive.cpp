@@ -54,6 +54,7 @@ Process Scheduler::Priority_Premetive() {
     {
         this->processes[idx].setCompletionTime(time_counter);
         this->processes[idx].setTurnAroundTime(time_counter - this->processes[idx].getArrivalTime());
+        this->processes[idx].setRunningState(false);
     }
     return this->processes[idx];
     
