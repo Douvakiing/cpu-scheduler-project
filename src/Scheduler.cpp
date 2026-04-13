@@ -2,6 +2,21 @@
 
 Scheduler::Scheduler() : currentTime(0) {}
 
+void Scheduler::resetRoundRobinState() {
+    rr_ready.clear();
+    rr_running = -1;
+    rr_time_left_in_quantum = 0;
+}
+
+bool Scheduler::allProcessesFinished() const {
+    for (const Process& p : processes) {
+        if (p.getRemainingTime() > 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void Scheduler::addProcess(const Process& process, int index) {
     if (index == -1) {
         processes.push_back(process);
@@ -32,4 +47,5 @@ void Scheduler::displayProcesses() const {
 
 void Scheduler::clearProcesses() {
     processes.clear();
+    resetRoundRobinState();
 }

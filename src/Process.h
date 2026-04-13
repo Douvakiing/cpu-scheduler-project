@@ -7,7 +7,7 @@ using namespace std;
 
 class Process{
 private:
-    inline static int idCounter;
+    inline static int idCounter = 0;
     int pId;
     string name;
     int arrivalTime;
@@ -72,7 +72,7 @@ public:
     void setCompletionTime(int time){
         this->completionTime = time;
     }
-    bool getRunningState(){
+    bool getRunningState() const{
         return this->running;
     }
     void setRunningState(bool state){

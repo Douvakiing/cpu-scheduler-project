@@ -1,0 +1,4 @@
+// Embeds the icon into the GUI executable (Explorer, taskbar, Alt+Tab on Windows).
+// Resource ID 1 is the conventional "application icon" the shell prefers for .exe files.
+#define IDI_MAINICON 1
+IDI_MAINICON ICON "app.ico"
