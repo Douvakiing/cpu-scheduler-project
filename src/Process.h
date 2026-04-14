@@ -33,6 +33,7 @@ public:
 
         this->waitingTime = 0;
         this->turnAroundTime = 0;
+        this->completionTime = -1;
         
     }
     
