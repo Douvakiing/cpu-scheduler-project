@@ -141,19 +141,19 @@ struct GuiSimulation {
             r = scheduler.FCFS();
             break;
         case Algorithm::SJF_Preemptive:
-            r = scheduler.SJF_Premetive();
+            r = scheduler.SJF_Preemptive();
             break;
         case Algorithm::SJF_NonPreemptive:
-            r = scheduler.SJF_NonPremetive();
+            r = scheduler.SJF_NonPreemptive();
             break;
         case Algorithm::RoundRobin:
             r = scheduler.RR(rrQuantum);
             break;
         case Algorithm::Priority_Preemptive:
-            r = scheduler.Priority_Premetive();
+            r = scheduler.Priority_Preemptive();
             break;
         case Algorithm::Priority_NonPreemptive:
-            r = scheduler.Priority_NonPremetive();
+            r = scheduler.Priority_NonPreemptive();
             break;
         default:
             return false;
