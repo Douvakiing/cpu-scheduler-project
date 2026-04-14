@@ -44,8 +44,8 @@ public:
 
     void updateWaitTime();
     void updateTAT();
-    int avgwWaitTime();
-    int avgTAT();
+    double avgwWaitTime();
+    double avgTAT();
 };
 
 #endif

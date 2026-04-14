@@ -68,6 +68,29 @@ void Scheduler::updateTAT(){
     }
 }
 
+double Scheduler::avgwWaitTime(){
+    if(processes.empty()) return 0;
+
+    double totalWaiting = 0;
+    for(int i = 0; i < this->processes.size(); i++){
+        totalWaiting += this->processes[i].getWaitingTime();
+    }
+
+    return (totalWaiting / this->processes.size());
+}
+
+double Scheduler::avgTAT(){
+    if(processes.empty()) return 0;
+
+    double totalTAT = 0;
+    for(int i = 0; i < this->processes.size(); i++){
+        totalTAT += this->processes[i].getTurnAroundTime();
+    }
+
+    return (totalTAT / this->processes.size());
+}
+
+
 void Scheduler::advanceTime() { 
     this->currentTime++; 
 
