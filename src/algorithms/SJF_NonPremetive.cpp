@@ -14,7 +14,7 @@ Process Scheduler::SJF_NonPreemptive(){
             this->processes[i].setRemainingTime(this->processes[i].getRemainingTime() - 1);
 
         if(this->processes[i].getRemainingTime() == 0){
-        this->processes[i].setCompletionTime(currentTime + 1);
+        this->processes[i].setCompletionTime(currentTime);
         this->processes[i].setRunningState(false);
     }
 
