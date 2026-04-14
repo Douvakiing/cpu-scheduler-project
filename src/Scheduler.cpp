@@ -45,10 +45,11 @@ void Scheduler::displayProcesses() const {
     }
 }
 
-void Scheduler::updateWaitTime(){
+
+void Scheduler::updateWaitTime(){ 
     for(int i = 0; i < (int)this->processes.size(); i++){
         if(this->processes[i].getArrivalTime() > currentTime || 
-           this->processes[i].getRemainingTime() == 0){
+        this->processes[i].getRemainingTime() == 0){
             continue;
         } 
         else{
@@ -57,6 +58,22 @@ void Scheduler::updateWaitTime(){
             }
         }
     }
+}
+
+void Scheduler::updateTAT(){
+    for(int i = 0; i < (int)this->processes.size(); i++){
+        if(this->processes[i].getCompletionTime() != 0){
+            this->processes[i].setTurnAroundTime(this->processes[i].getCompletionTime() - this->processes[i].getArrivalTime());
+        } 
+    }
+}
+
+void Scheduler::advanceTime() { 
+    this->currentTime++; 
+
+    updateWaitTime();
+    updateTAT();
+    
 }
 
 void Scheduler::clearProcesses() {

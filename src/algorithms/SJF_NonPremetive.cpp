@@ -14,9 +14,6 @@ Process Scheduler::SJF_NonPreemptive(){
             this->processes[i].setRemainingTime(this->processes[i].getRemainingTime() - 1);
             return this->processes[i];
         }
-        else if(this->processes[i].getRunningState() && this->processes[i].getRemainingTime() == 0){
-            this->processes[i].setRunningState(false);
-        }
     }
     
     // Picking the next process to run
@@ -31,9 +28,9 @@ Process Scheduler::SJF_NonPreemptive(){
         else if(this->processes[idx].getBurstTime() > this->processes[i].getBurstTime()) {
             idx = i;
         }
-
+        
     }
-
+    
     // Edge case, if all processes are done (won't be needed most likley bs sebo leh)
     if(idx == -1) {
         return Process("IDLE", currentTime, 0);
@@ -41,5 +38,11 @@ Process Scheduler::SJF_NonPreemptive(){
     
     this->processes[idx].setRunningState(true);
     this->processes[idx].setRemainingTime(this->processes[idx].getRemainingTime() - 1);
+
+    if(this->processes[idx].getRemainingTime() == 0){
+        this->processes[idx].setCompletionTime(currentTime + 1);
+        this->processes[idx].setRunningState(false);
+    }
+
     return this->processes[idx];
 }
