@@ -176,6 +176,20 @@ struct GuiSimulation {
         return true;
     }
 
+    bool runUntilDone(int rrQuantum, int maxTicks = 200000) {
+        if (names.empty()) {
+            return false;
+        }
+        int ticks = 0;
+        while (!allDone() && ticks < maxTicks) {
+            if (!step(rrQuantum, true)) {
+                return false;
+            }
+            ++ticks;
+        }
+        return allDone();
+    }
+
     void addProcessAtCurrentTime(const std::string& displayName, int burst, int priority) {
         const int arrival = scheduler.getCurrentTime();
         names.push_back(displayName);
@@ -610,7 +624,7 @@ int main(int, char**) {
         const bool showPriority =
             (algoIndex == static_cast<int>(Algorithm::Priority_Preemptive)
              || algoIndex == static_cast<int>(Algorithm::Priority_NonPreemptive));
-        const int procTableCols = showPriority ? 6 : 5;
+        const int procTableCols = showPriority ? 7 : 6;
 
         // Widths are proportional to the main window content width (weights are relative, not absolute px).
         if (ImGui::BeginTable(
@@ -618,12 +632,13 @@ int main(int, char**) {
                 procTableCols,
                 ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
             ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthStretch, 0.06f);
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, showPriority ? 0.28f : 0.34f);
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, showPriority ? 0.23f : 0.27f);
             ImGui::TableSetupColumn("Arrival", ImGuiTableColumnFlags_WidthStretch, 0.14f);
             ImGui::TableSetupColumn("Burst", ImGuiTableColumnFlags_WidthStretch, 0.14f);
             if (showPriority) {
                 ImGui::TableSetupColumn("Priority", ImGuiTableColumnFlags_WidthStretch, 0.14f);
             }
+            ImGui::TableSetupColumn("Remaining", ImGuiTableColumnFlags_WidthStretch, 0.14f);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch, 0.05f);
             ImGui::TableHeadersRow();
 
@@ -644,6 +659,15 @@ int main(int, char**) {
                     ImGui::TableSetColumnIndex(c++);
                     ImGui::InputInt("##prio", &table[i].priority);
                 }
+                ImGui::TableSetColumnIndex(c++);
+                int remaining = table[i].burst;
+                if (lockProcessSetup) {
+                    const std::vector<Process>& simProcesses = sim.scheduler.getProcesses();
+                    if (i < static_cast<int>(simProcesses.size())) {
+                        remaining = std::max(0, simProcesses[static_cast<size_t>(i)].getRemainingTime());
+                    }
+                }
+                ImGui::Text("%d", remaining);
                 ImGui::TableSetColumnIndex(c++);
 
                 if (table[i].arrival < 0) {
@@ -742,12 +766,13 @@ int main(int, char**) {
         const bool canRunSim = canRunAlgo && !sim.names.empty();
         const bool runDisabled =
             !canRunSim || simRunning || (stopSimWhenAllDone && sim.allDone());
+        const bool instantRunDisabled = !canRunSim || simRunning || sim.allDone();
         const bool pauseDisabled = !simRunning;
 
         if (runDisabled) {
             ImGui::BeginDisabled();
         }
-        if (ImGui::Button("Run") && canRunAlgo) {
+        if (ImGui::Button("Run (live)") && canRunAlgo) {
             if (!simRunning && !simPaused && simReset) {
                 sim.resetFromTable(table, static_cast<Algorithm>(algoIndex));
                 simReset = false;
@@ -756,6 +781,22 @@ int main(int, char**) {
             simPaused = false;
         }
         if (runDisabled) {
+            ImGui::EndDisabled();
+        }
+        ImGui::SameLine();
+        if (instantRunDisabled) {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("Run (instant)") && canRunAlgo) {
+            if (!simRunning && !simPaused && simReset) {
+                sim.resetFromTable(table, static_cast<Algorithm>(algoIndex));
+                simReset = false;
+            }
+            simRunning = false;
+            simPaused = false;
+            sim.runUntilDone(rrQuantum);
+        }
+        if (instantRunDisabled) {
             ImGui::EndDisabled();
         }
         ImGui::SameLine();
@@ -815,9 +856,9 @@ int main(int, char**) {
         ImGui::PushStyleColor(ImGuiCol_Separator, IM_COL32(155, 235, 55, 255)); // R,G,B,A
         ImGui::SeparatorText("Process Scheduling Metrics");
         ImGui::PopStyleColor();
-        if(sim.allDone()){  //calculation
-            ImGui::Text("Average Waiting Time:");
-            ImGui::Text("Average Turnaround Time:");
+        if (sim.allDone()) {
+            ImGui::Text("Average Waiting Time: %.2f", sim.scheduler.avgwWaitTime());
+            ImGui::Text("Average Turnaround Time: %.2f", sim.scheduler.avgTAT());
         }
         ImGui::End();
 
