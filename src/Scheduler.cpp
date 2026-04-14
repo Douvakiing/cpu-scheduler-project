@@ -45,6 +45,20 @@ void Scheduler::displayProcesses() const {
     }
 }
 
+void Scheduler::updateWaitTime(){
+    for(int i = 0; i < (int)this->processes.size(); i++){
+        if(this->processes[i].getArrivalTime() > currentTime || 
+           this->processes[i].getRemainingTime() == 0){
+            continue;
+        } 
+        else{
+            if(!this->processes[i].getRunningState()){
+                this->processes[i].setWaitingTime(this->processes[i].getWaitingTime() + 1);
+            }
+        }
+    }
+}
+
 void Scheduler::clearProcesses() {
     processes.clear();
     resetRoundRobinState();

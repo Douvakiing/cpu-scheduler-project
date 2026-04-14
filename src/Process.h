@@ -30,6 +30,10 @@ public:
         this->priority = priority;
         this->remainingTime = burstTime;
         this->running = running;
+
+        this->waitingTime = 0;
+        this->turnAroundTime = 0;
+        
     }
     
     int getPid() const{

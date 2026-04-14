@@ -41,6 +41,11 @@ public:
     Process RR(int timeQuantum);
     Process Priority_Preemptive();
     Process Priority_NonPreemptive();
+
+    void updateWaitTime();
+    void updateTAT();
+    int avgwWaitTime();
+    int avgTAT();
 };
 
 #endif
