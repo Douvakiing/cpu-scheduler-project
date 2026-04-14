@@ -12,6 +12,14 @@ Process Scheduler::FCFS(){
     for(int i = 0; i < (int)this->processes.size(); i++){
         if(this->processes[i].getRunningState() && this->processes[i].getRemainingTime() != 0){
             this->processes[i].setRemainingTime(this->processes[i].getRemainingTime() - 1);
+            if(this->processes[i].getRemainingTime() == 0){
+                this->processes[i].setCompletionTime(currentTime + 1);
+                this->processes[i].setRunningState(false);
+                int turn_around = (currentTime + 1) - this->processes[i].getArrivalTime();
+                this->processes[i].setTurnAroundTime(turn_around);
+                int waiting_time = turn_around - this->processes[i].getBurstTime();
+                this->processes[i].setWaitingTime(waiting_time);
+            }
             return this->processes[i];
         }
         else if(this->processes[i].getRunningState() && this->processes[i].getRemainingTime() == 0){
@@ -44,6 +52,15 @@ Process Scheduler::FCFS(){
     // 4. Start the selected process and decrement its remaining time by 1 unit
     this->processes[idx].setRunningState(true);
     this->processes[idx].setRemainingTime(this->processes[idx].getRemainingTime() - 1);
+
+    if(this->processes[idx].getRemainingTime() == 0){
+        this->processes[idx].setCompletionTime(currentTime + 1);
+        this->processes[idx].setRunningState(false);
+        int turn_around = (currentTime + 1) - this->processes[idx].getArrivalTime();
+        this->processes[idx].setTurnAroundTime(turn_around);
+        int waiting_time = turn_around - this->processes[idx].getBurstTime();
+        this->processes[idx].setWaitingTime(waiting_time);
+    }
     
     return this->processes[idx];
 }
