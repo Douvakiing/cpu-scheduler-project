@@ -857,8 +857,18 @@ int main(int, char**) {
         ImGui::SeparatorText("Process Scheduling Metrics");
         ImGui::PopStyleColor();
         if (sim.allDone()) {
-            ImGui::Text("Average Waiting Time: %.2f", sim.scheduler.avgwWaitTime());
-            ImGui::Text("Average Turnaround Time: %.2f", sim.scheduler.avgTAT());
+            ImGui::BeginChild("c",ImVec2(-1,-1),true);
+            ImGui::Text("Average Waiting Time:");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0,255,0,255),"%.2f", sim.scheduler.avgwWaitTime());
+            ImGui::SameLine();
+            ImGui::Text("Time unit");
+            ImGui::Text("Average Turnaround Time:");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0,255,0,255),"%.2f", sim.scheduler.avgTAT());
+            ImGui::SameLine();
+            ImGui::Text("Time unit");
+            ImGui::EndChild();
         }
         ImGui::End();
 
