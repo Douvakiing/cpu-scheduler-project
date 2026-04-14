@@ -33,7 +33,7 @@ Process Scheduler::SJF_NonPreemptive(){
     
     // Edge case, if all processes are done (won't be needed most likley bs sebo leh)
     if(idx == -1) {
-        return Process("IDLE", currentTime, 0);
+        return Process("IDLE", this->currentTime, 0);
     }
     
     this->processes[idx].setRunningState(true);
