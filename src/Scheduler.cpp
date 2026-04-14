@@ -76,7 +76,7 @@ double Scheduler::avgwWaitTime(){
         totalWaiting += this->processes[i].getWaitingTime();
     }
 
-    return (totalWaiting / this->processes.size());
+    return (totalWaiting / (double)this->processes.size());
 }
 
 double Scheduler::avgTAT(){

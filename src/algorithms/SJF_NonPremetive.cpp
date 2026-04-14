@@ -12,6 +12,12 @@ Process Scheduler::SJF_NonPreemptive(){
     for(int i = 0; i < (int)this->processes.size(); i++){
         if(this->processes[i].getRunningState() && this->processes[i].getRemainingTime() != 0){
             this->processes[i].setRemainingTime(this->processes[i].getRemainingTime() - 1);
+
+        if(this->processes[i].getRemainingTime() == 0){
+        this->processes[i].setCompletionTime(currentTime + 1);
+        this->processes[i].setRunningState(false);
+    }
+
             return this->processes[i];
         }
     }
@@ -37,12 +43,6 @@ Process Scheduler::SJF_NonPreemptive(){
     }
     
     this->processes[idx].setRunningState(true);
-    this->processes[idx].setRemainingTime(this->processes[idx].getRemainingTime() - 1);
-
-    if(this->processes[idx].getRemainingTime() == 0){
-        this->processes[idx].setCompletionTime(currentTime + 1);
-        this->processes[idx].setRunningState(false);
-    }
 
     return this->processes[idx];
 }
