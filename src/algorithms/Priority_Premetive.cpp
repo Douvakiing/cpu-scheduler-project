@@ -5,15 +5,13 @@
 #include "Scheduler.h"
 
 using namespace std;
-int time_counter =0;
-Process Scheduler::Priority_Premetive() {
+Process Scheduler::Priority_Preemptive() {
     int idx=-1;
-    time_counter++;
     
     for(int i =0 ; i < this->processes.size(); i++)
     {
-        // Skips finised processes
-       if( this->processes[i].getRemainingTime() < 1)
+        // Skip not-yet-arrived or already finished processes.
+       if(this->processes[i].getArrivalTime() > currentTime || this->processes[i].getRemainingTime() < 1)
        {
         continue;
        } 
@@ -35,25 +33,30 @@ Process Scheduler::Priority_Premetive() {
     {
     return Process("IDLE", currentTime, 0);
     }
-    //Updating the waiting time and running states(for Preemptive) of the unchoosen unfinished processes
+    // Mark non-selected processes as not running (preempted or waiting).
     for(int i = 0 ; i < this->processes.size() ; i++)
     {
-        if(i == idx || this->processes[i].getRemainingTime() == 0)
+        if(i == idx)
         {
             continue;
         }
-        this->processes[i].setWaitingTime((this->processes[i].getWaitingTime()) + 1);
         this->processes[i].setRunningState(false); // For interrupted processes
     }
 
     this->processes[idx].setRunningState(true);
     this->processes[idx].setRemainingTime(this->processes[idx].getRemainingTime() - 1);
+    
 
-    //Setting the Completion and turn around times after the process finishes execution
+    // Record completion on the exact finishing tick.
     if(this->processes[idx].getRemainingTime() == 0)
-    {
-        this->processes[idx].setCompletionTime(time_counter);
-        this->processes[idx].setTurnAroundTime(time_counter - this->processes[idx].getArrivalTime());
+    {           
+        this->processes[idx].setCompletionTime(currentTime + 1);
+        this->processes[idx].setRunningState(false);
+        //time calculations
+        int turn_around = (currentTime + 1) - this->processes[idx].getArrivalTime();
+        this->processes[idx].setTurnAroundTime(turn_around);
+        int waiting_time = turn_around - this->processes[idx].getBurstTime();
+        this->processes[idx].setWaitingTime(waiting_time);
     }
     return this->processes[idx];
     
