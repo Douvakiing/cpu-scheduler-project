@@ -13,18 +13,20 @@ Process Scheduler::SJF_NonPreemptive(){
         if(this->processes[i].getRunningState() && this->processes[i].getRemainingTime() != 0){
             this->processes[i].setRemainingTime(this->processes[i].getRemainingTime() - 1);
 
+            
         if(this->processes[i].getRemainingTime() == 0){
-        this->processes[i].setCompletionTime(currentTime + 1);
-        this->processes[i].setRunningState(false);
-        int turn_around = (currentTime + 1) - processes[i].getArrivalTime();
-        processes[i].setTurnAroundTime(turn_around);
-        int waiting_time = turn_around - processes[i].getBurstTime();
-        processes[i].setWaitingTime(waiting_time);
-    }
-
-            return this->processes[i];
+            
+            this->processes[i].setCompletionTime(currentTime + 1);
+            this->processes[i].setRunningState(false);
+            int turn_around = (currentTime + 1) - processes[i].getArrivalTime();
+            processes[i].setTurnAroundTime(turn_around);
+            int waiting_time = turn_around - processes[i].getBurstTime();
+            processes[i].setWaitingTime(waiting_time);
         }
+
+        return this->processes[i];
     }
+}
     
     // Picking the next process to run
     int idx = -1;
@@ -48,5 +50,14 @@ Process Scheduler::SJF_NonPreemptive(){
     
     this->processes[idx].setRunningState(true);
     this->processes[idx].setRemainingTime(this->processes[idx].getRemainingTime() - 1);
+    if(this->processes[idx].getRemainingTime() == 0){
+            
+            this->processes[idx].setCompletionTime(currentTime + 1);
+            this->processes[idx].setRunningState(false);
+            int turn_around = (currentTime + 1) - processes[idx].getArrivalTime();
+            processes[idx].setTurnAroundTime(turn_around);
+            int waiting_time = turn_around - processes[idx].getBurstTime();
+            processes[idx].setWaitingTime(waiting_time);
+        }
     return this->processes[idx];
 }
