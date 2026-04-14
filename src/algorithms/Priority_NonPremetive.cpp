@@ -14,6 +14,15 @@ Process Scheduler::Priority_NonPreemptive()
         if (this->processes[i].getRunningState() && this->processes[i].getRemainingTime() != 0)
         {
             this->processes[i].setRemainingTime(this->processes[i].getRemainingTime() - 1);
+            //time calculations
+            if(this->processes[i].getRemainingTime() == 0){
+                this->processes[i].setCompletionTime(currentTime + 1);
+                this->processes[i].setRunningState(false);
+                int turn_around = (currentTime + 1) - this->processes[i].getArrivalTime();
+                this->processes[i].setTurnAroundTime(turn_around);
+                int waiting_time = turn_around - this->processes[i].getBurstTime();
+                this->processes[i].setWaitingTime(waiting_time);
+            }
             return this->processes[i];
         }
         else if (this->processes[i].getRunningState() && this->processes[i].getRemainingTime() == 0)
@@ -56,6 +65,15 @@ Process Scheduler::Priority_NonPreemptive()
     // Start the selected process and decrement its remaining time by 1 unit
     this->processes[idx].setRunningState(true);
     this->processes[idx].setRemainingTime(this->processes[idx].getRemainingTime() - 1);
+    //time calculations
+    if(this->processes[idx].getRemainingTime() == 0){
+                this->processes[idx].setCompletionTime(currentTime + 1);
+                this->processes[idx].setRunningState(false);
+                int turn_around = (currentTime + 1) - this->processes[idx].getArrivalTime();
+                this->processes[idx].setTurnAroundTime(turn_around);
+                int waiting_time = turn_around - this->processes[idx].getBurstTime();
+                this->processes[idx].setWaitingTime(waiting_time);
+            }
 
     return this->processes[idx];
 }

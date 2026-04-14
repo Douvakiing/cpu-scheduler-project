@@ -45,12 +45,18 @@ Process Scheduler::Priority_Preemptive() {
 
     this->processes[idx].setRunningState(true);
     this->processes[idx].setRemainingTime(this->processes[idx].getRemainingTime() - 1);
+    
 
     // Record completion on the exact finishing tick.
     if(this->processes[idx].getRemainingTime() == 0)
-    {
+    {           
         this->processes[idx].setCompletionTime(currentTime + 1);
         this->processes[idx].setRunningState(false);
+        //time calculations
+        int turn_around = (currentTime + 1) - this->processes[idx].getArrivalTime();
+        this->processes[idx].setTurnAroundTime(turn_around);
+        int waiting_time = turn_around - this->processes[idx].getBurstTime();
+        this->processes[idx].setWaitingTime(waiting_time);
     }
     return this->processes[idx];
     
