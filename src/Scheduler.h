@@ -28,7 +28,7 @@ public:
 
     int getCurrentTime() const { return currentTime; }
     void setCurrentTime(int t) { currentTime = t; }
-    void advanceTime() { currentTime++; }
+    void advanceTime();
 
     vector<Process>& getProcesses() { return processes; }
     const vector<Process>& getProcesses() const { return processes; }
