@@ -6,7 +6,7 @@
 
 using namespace std;
 
-Process Scheduler::Priority_NonPremetive()
+Process Scheduler::Priority_NonPreemptive()
 {
     // Latch onto an already running process, not letting it go until it's done running (Non-preemptive)
     for (int i = 0; i < (int)this->processes.size(); i++)

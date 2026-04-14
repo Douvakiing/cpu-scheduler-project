@@ -36,11 +36,11 @@ public:
     bool allProcessesFinished() const;
 
     Process FCFS();
-    Process SJF_Premetive();
-    Process SJF_NonPremetive();
-    void RR(int timeQuantum);
-    void Priority_Premetive();
-    void Priority_NonPremetive();
+    Process SJF_Preemptive();
+    Process SJF_NonPreemptive();
+    Process RR(int timeQuantum);
+    Process Priority_Preemptive();
+    Process Priority_NonPreemptive();
 };
 
 #endif

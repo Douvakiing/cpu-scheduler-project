@@ -6,7 +6,7 @@
 
 using namespace std;
 
-Process Scheduler::SJF_NonPremetive(){
+Process Scheduler::SJF_NonPreemptive(){
     
     // Latching onto an already running process, not letting it go until it's done running
     for(int i = 0; i < (int)this->processes.size(); i++){

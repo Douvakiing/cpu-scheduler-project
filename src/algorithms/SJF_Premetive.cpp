@@ -6,6 +6,6 @@
 
 using namespace std;
 
-Process Scheduler::SJF_Premetive() {
+Process Scheduler::SJF_Preemptive() {
     return Process("IDLE", currentTime, 0);
 }

@@ -6,7 +6,7 @@
 
 using namespace std;
 int time_counter =0;
-Process Scheduler::Priority_Premetive() {
+Process Scheduler::Priority_Preemptive() {
     int idx=-1;
     time_counter++;
     
