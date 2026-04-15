@@ -856,24 +856,32 @@ int main(int, char**) {
         ImGui::PushStyleColor(ImGuiCol_Separator, IM_COL32(155, 235, 55, 255)); // R,G,B,A
         ImGui::SeparatorText("Process Scheduling Metrics");
         ImGui::PopStyleColor();
-        if (sim.allDone()) {
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.14f, 1.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f);
-            ImGui::BeginChild("metrics",ImVec2(0,80),true);
-            ImGui::Text("Average Waiting Time:       ");
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0,255,0,255),"%.2f", sim.scheduler.avgwWaitTime());
-            ImGui::SameLine();
-            ImGui::Text("Time unit");
-            ImGui::Text("Average Turnaround Time:");
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0,255,0,255),"%.2f", sim.scheduler.avgTAT());
-            ImGui::SameLine();
-            ImGui::Text("Time unit");
-            ImGui::EndChild();
-            ImGui::PopStyleVar();
-            ImGui::PopStyleColor();
+        const bool hasProcesses = !sim.names.empty();
+        const bool metricsReady = hasProcesses && sim.allDone();
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.14f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f);
+        ImGui::BeginChild("metrics", ImVec2(0, 80), true);
+        ImGui::Text("Average Waiting Time:       ");
+        ImGui::SameLine();
+        if (metricsReady) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%.2f", sim.scheduler.avgwWaitTime());
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "TBD");
         }
+        ImGui::SameLine();
+        ImGui::Text("Time unit");
+        ImGui::Text("Average Turnaround Time:");
+        ImGui::SameLine();
+        if (metricsReady) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%.2f", sim.scheduler.avgTAT());
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "TBD");
+        }
+        ImGui::SameLine();
+        ImGui::Text("Time unit");
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
         ImGui::End();
 
         ImGui::Render();
