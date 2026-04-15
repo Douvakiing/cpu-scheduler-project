@@ -42,8 +42,6 @@ public:
     Process Priority_Preemptive();
     Process Priority_NonPreemptive();
 
-    void updateWaitTime();
-    void updateTAT();
     double avgwWaitTime();
     double avgTAT();
 };
